@@ -1,0 +1,29 @@
+version: "3"
+services:
+
+### MariaDB Container #########################################
+
+  mariadb:
+    image: mariadb:latest
+    restart: always
+    volumes:
+      - ./data:/var/lib/mysql
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_USER: alexbrasser
+      MYSQL_PASSWORD: alexbrasser
+      MYSQL_DATABASE: alexbrasser
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+
+
+### Redis Container #########################################
+
+  redis:
+    image: redis:latest
+    volumes:
+      - ./data/redis:/data
+    ports:
+      - "6379:6379"
+    command: >
+      --requirepass alexbrasser
