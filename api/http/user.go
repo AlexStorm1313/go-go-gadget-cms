@@ -1,75 +1,140 @@
 package http
 
 import (
-	"github.com/labstack/echo"
 	"alexbrasser/model"
 	"net/http"
 	"github.com/dgrijalva/jwt-go"
-	"time"
-	"strconv"
+	"github.com/labstack/echo"
 )
 
-func GetUser(context echo.Context) (error) {
+func GetUser(context echo.Context) error {
 	user := &model.User{}
 
-	if err := model.GetUser(user, context.Param("id")); err != nil {
+	if err := user.GetByUUID(context.Param("uuid")); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 	return context.JSON(http.StatusOK, &user)
 }
 
-func GetUsers(context echo.Context) (error) {
-	users := &[]model.User{}
-	if err := model.GetUsers(users); err != nil {
+func GetUsers(context echo.Context) error {
+	users := &model.Users{}
+
+	if err := users.Get(); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 	return context.JSON(http.StatusOK, &users)
 }
 
-func CreateUser(context echo.Context) (error) {
+func CreateUser(context echo.Context) error {
 	user := &model.User{}
+	data := &model.User{}
 
-	if err := context.Bind(&user); err != nil {
+	if err := context.Bind(&data); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 
-	if err := model.CreateUser(user); err != nil {
+	if err := user.Create(*data); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 
 	return context.JSON(http.StatusOK, &user)
 }
 
-func AuthenticateUser(context echo.Context) (error) {
+func UpdateUser(context echo.Context) error {
+	user := &model.User{}
+	data := &model.User{}
+
+	if err := context.Bind(&data); err != nil {
+		return context.JSON(http.StatusInternalServerError, err)
+	}
+
+	if err := user.Update(*data); err != nil {
+		return context.JSON(http.StatusInternalServerError, err)
+	}
+
+	return context.JSON(http.StatusOK, &user)
+}
+
+func GetUserByEmail(context echo.Context) error {
 	user := &model.User{}
 
 	if err := context.Bind(&user); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 
-	model.GetUserByEmailAndPassword(user)
-
-	// Create token
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	// Set claims
-	claims := token.Claims.(jwt.MapClaims)
-	claims["id"] = &user.ID
-	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
-
-	// Generate encoded token and send it as response.
-	t, err := token.SignedString([]byte("VZHE7JAPWMUI8KFHC6Z020TV9P2J8N1KIU86ZKGVCSJ1RFMRXH87MXX6H14TC0VA"))
-	if err != nil {
-		return err
+	if err := user.GetByEmail(user.Email); err != nil {
+		return context.JSON(http.StatusInternalServerError, err)
 	}
-	return context.JSON(http.StatusOK, map[string]string{
-		"token": t,
-	})
+
+	return context.JSON(http.StatusOK, &user)
+
 }
 
-func SelfUser(context echo.Context) (error){
+func AuthUser(context echo.Context) error {
 	user := &model.User{}
-	id := context.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64)
-	model.GetUser(user, strconv.Itoa(int(id)))
+
+	if err := context.Bind(&user); err != nil {
+		return context.JSON(http.StatusInternalServerError, err)
+	}
+
+	password := user.Password
+
+	if err := user.GetByEmail(user.Email); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if err := user.CheckPasswordHash(password); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	err, token := user.CreateToken()
+	if err != nil {
+		return context.JSON(http.StatusInternalServerError, err)
+	}
+
+	return context.JSON(http.StatusOK, token)
+
+}
+
+func SelfUser(context echo.Context) error {
+	user := &model.User{}
+	uuid := context.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["user"].(string)
+	user.GetByUUID(uuid)
+	return context.JSON(http.StatusOK, &user)
+}
+
+func AddPermissionUser(context echo.Context) error {
+	user := &model.User{}
+	permission := &model.Permission{}
+	if err := user.GetByUUID(context.Param("uuid")); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if err := context.Bind(&permission); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if err := user.AddPermission(*permission); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	return context.JSON(http.StatusOK, &user)
+}
+
+func DeletePermissionUser(context echo.Context) error {
+	user := &model.User{}
+	permission := &model.Permission{}
+	if err := user.GetByUUID(context.Param("uuid")); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if err := context.Bind(&permission); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if err := user.DeletePermission(*permission); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
 	return context.JSON(http.StatusOK, &user)
 }

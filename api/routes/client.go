@@ -7,12 +7,14 @@ import (
 )
 
 func RegisterClientRoutes(echo *echo.Echo) {
-	echo.POST("/clients", http.CreateClient)
-	echo.GET("/client/:id", http.GetClient)
-	echo.POST("/client/authenticate", http.AuthenticateClient)
+	echo.POST("/client", http.CreateClient)
+	echo.GET("/client/:uuid", http.GetClient)
+	echo.POST("/client/auth", http.AuthClient)
 	echo.GET("/client/self", http.SelfClient, middleware.JWTWithConfig(middleware.JWTConfig{
-		SigningKey:  []byte("VZHE7JAPWMUI8KFHC6Z020TV9P2J8N1KIU86ZKGVCSJ1RFMRXH87MXX6H14TC0VA"),
+		SigningKey:  []byte("secret"),
 		ContextKey:  "client",
 		TokenLookup: "header:Client-Token",
 	}))
+	echo.PATCH("/client/:uuid/add/permission", http.AddPermissionClient)
+	echo.PATCH("/client/:uuid/delete/permission", http.DeletePermissionClient)
 }

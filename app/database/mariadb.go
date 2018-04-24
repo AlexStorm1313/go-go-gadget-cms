@@ -8,9 +8,9 @@ import (
 )
 
 func OpenMariaDB() (*gorm.DB) {
-	db, err := gorm.Open("mysql", "alexbrasser:alexbrasser@/alexbrasser?charset=utf8&parseTime=True&loc=Local")
+	client, err := gorm.Open("mysql", "alexbrasser:alexbrasser@/alexbrasser?charset=utf8&parseTime=True&loc=Local")
 	if err != nil {
 		log.Println(err)
 	}
-	return db
+	return client
 }

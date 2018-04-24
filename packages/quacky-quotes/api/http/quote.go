@@ -2,22 +2,22 @@ package http
 
 import (
 	"github.com/labstack/echo"
-	"alexbrasser/model"
 	"net/http"
+	"alexbrasser/packages/quacky-quotes/model"
 )
 
 func GetQuote(context echo.Context) (error) {
 	quote := &model.Quote{}
 
-	if err := model.GetQuote(quote, context.Param("id")); err != nil {
+	if err := quote.Get(context.Param("id")); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 	return context.JSON(http.StatusOK, &quote)
 }
 
 func GetQuotes(context echo.Context) (error) {
-	quotes := &[]model.Quote{}
-	if err := model.GetQuotes(quotes); err != nil {
+	quotes := &model.Quotes{}
+	if err := quotes.Get(); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 	return context.JSON(http.StatusOK, &quotes)
@@ -30,7 +30,7 @@ func CreateQuote(context echo.Context) (error) {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 
-	if err := model.CreateQuote(quote); err != nil {
+	if err := quote.Create(); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 

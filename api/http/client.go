@@ -5,64 +5,90 @@ import (
 	"alexbrasser/model"
 	"net/http"
 	"github.com/dgrijalva/jwt-go"
-	"time"
-	"strconv"
 )
 
 func GetClient(context echo.Context) (error) {
 	client := &model.Client{}
 
-	if err := model.GetClient(client, context.Param("id")); err != nil {
+	if err := client.Get(context.Param("id")); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 	return context.JSON(http.StatusOK, &client)
 }
-
 
 func CreateClient(context echo.Context) (error) {
 	client := &model.Client{}
+	data := &model.Client{}
 
-	if err := context.Bind(&client); err != nil {
+	if err := context.Bind(&data); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 
-	if err := model.CreateClient(client); err != nil {
+	if err := client.Create(*data); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 
 	return context.JSON(http.StatusOK, &client)
 }
 
-func AuthenticateClient(context echo.Context) (error) {
+func AuthClient(context echo.Context) (error) {
 	client := &model.Client{}
 
 	if err := context.Bind(&client); err != nil {
 		return context.JSON(http.StatusInternalServerError, err)
 	}
 
-	model.GetClientBySecret(client)
-
-	// Create token
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	// Set claims
-	claims := token.Claims.(jwt.MapClaims)
-	claims["id"] = &client.ID
-	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
-
-	// Generate encoded token and send it as response.
-	t, err := token.SignedString([]byte("VZHE7JAPWMUI8KFHC6Z020TV9P2J8N1KIU86ZKGVCSJ1RFMRXH87MXX6H14TC0VA"))
-	if err != nil {
-		return err
+	if err := client.GetBySecret(client.Secret); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
 	}
-	return context.JSON(http.StatusOK, map[string]string{
-		"token": t,
-	})
+
+	err, token := client.CreateToken()
+	if err != nil {
+		return context.JSON(http.StatusInternalServerError, err)
+	}
+
+	return context.JSON(http.StatusOK, token)
+}
+
+func AddPermissionClient(context echo.Context) (error) {
+	client := &model.Client{}
+	permission := &model.Permission{}
+	if err := client.GetByUUID(context.Param("uuid")); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if err := context.Bind(&permission); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if err := client.AddPermission(*permission); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	return context.JSON(http.StatusOK, &client)
+}
+
+func DeletePermissionClient(context echo.Context)(error){
+	client := &model.Client{}
+	permission := &model.Permission{}
+	if err := client.GetByUUID(context.Param("uuid")); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if err := context.Bind(&permission); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if err := client.DeletePermission(*permission); err != nil {
+		return context.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	return context.JSON(http.StatusOK, &client)
 }
 
 func SelfClient(context echo.Context) (error){
 	client := &model.Client{}
-	id := context.Get("client").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64)
-	model.GetClient(client, strconv.Itoa(int(id)))
+	uuid := context.Get("client").(*jwt.Token).Claims.(jwt.MapClaims)["client"].(string)
+	client.GetByUUID(uuid)
 	return context.JSON(http.StatusOK, &client)
 }
